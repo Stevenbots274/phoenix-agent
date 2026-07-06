@@ -8,7 +8,9 @@ from app.core.config import get_settings
 settings = get_settings()
 
 # Convert DATABASE_URL for asyncpg
-db_url = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+db_url = settings.DATABASE_URL
+if db_url.startswith("postgresql://"):
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
 engine = create_async_engine(db_url, echo=False, future=True)
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
