@@ -1,7 +1,18 @@
+# fly.toml app configuration file generated for phoenix-agent on 2026-07-06T09:44:00Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
 app = 'phoenix-agent'
-primary_region = 'iad'
+primary_region = 'lhr'
 
 [build]
+
+[deploy]
+  release_command = 'alembic upgrade head'
+
+[env]
+  PORT = '8080'
 
 [http_service]
   internal_port = 8080
@@ -15,9 +26,4 @@ primary_region = 'iad'
   memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
-
-[env]
-  PORT = "8080"
-
-[deploy]
-  release_command = "alembic upgrade head"
+  memory_mb = 1024
