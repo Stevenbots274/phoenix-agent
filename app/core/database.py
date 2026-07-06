@@ -4,13 +4,33 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy import Column, String, DateTime, Text, Integer, Boolean, ForeignKey, JSON
 from datetime import datetime
 from app.core.config import get_settings
+from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 
 settings = get_settings()
 
 # Convert DATABASE_URL for asyncpg
 db_url = settings.DATABASE_URL
 if db_url.startswith("postgresql://"):
+    # Replace scheme
     db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    
+    # asyncpg doesn't support 'sslmode' but uses 'ssl' parameter.
+    # For Neon/Fly.io, we often need to handle this.
+    parsed = urlparse(db_url)
+    query = parse_qs(parsed.query)
+    
+    if "sslmode" in query:
+        sslmode = query.pop("sslmode")[0]
+        # asyncpg uses 'ssl' instead of 'sslmode'
+        # if sslmode is 'require', 'prefer', 'allow', we set ssl=True
+        if sslmode in ["require", "prefer", "allow"]:
+            query["ssl"] = ["true"]
+        elif sslmode == "disable":
+            query["ssl"] = ["false"]
+            
+    # Reconstruct URL without unsupported parameters
+    new_query = urlencode(query, doseq=True)
+    db_url = urlunparse(parsed._replace(query=new_query))
 
 engine = create_async_engine(db_url, echo=False, future=True)
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
