@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 
 from app.core.database import get_db, ChatSession, ChatMessage, User
@@ -27,6 +27,8 @@ class ChatSessionResponse(BaseModel):
     updated_at: str
 
 class ChatMessageResponse(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+    
     id: str
     role: str
     content: str

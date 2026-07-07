@@ -14,19 +14,25 @@ if db_url.startswith("postgresql://"):
     # Replace scheme
     db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
     
-    # asyncpg doesn't support 'sslmode' but uses 'ssl' parameter.
-    # For Neon/Fly.io, we often need to handle this.
+    # asyncpg doesn't support 'sslmode' or 'channel_binding' but uses 'ssl' parameter.
+    # For Neon/Fly.io, we need to handle these common Postgres query parameters.
     parsed = urlparse(db_url)
     query = parse_qs(parsed.query)
     
+    # Handle sslmode
     if "sslmode" in query:
         sslmode = query.pop("sslmode")[0]
         # asyncpg uses 'ssl' instead of 'sslmode'
-        # if sslmode is 'require', 'prefer', 'allow', we set ssl=True
         if sslmode in ["require", "prefer", "allow"]:
             query["ssl"] = ["true"]
         elif sslmode == "disable":
             query["ssl"] = ["false"]
+            
+    # Remove other unsupported parameters like 'channel_binding'
+    unsupported_params = ["channel_binding"]
+    for param in unsupported_params:
+        if param in query:
+            query.pop(param)
             
     # Reconstruct URL without unsupported parameters
     new_query = urlencode(query, doseq=True)
