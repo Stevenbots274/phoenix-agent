@@ -10,23 +10,24 @@ settings = get_settings()
 
 # Convert DATABASE_URL for asyncpg
 db_url = settings.DATABASE_URL
+connect_args = {}
+
 if db_url.startswith("postgresql://"):
     # Replace scheme
     db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
     
-    # asyncpg doesn't support 'sslmode' or 'channel_binding' but uses 'ssl' parameter.
-    # For Neon/Fly.io, we need to handle these common Postgres query parameters.
+    # Parse URL to handle query parameters
     parsed = urlparse(db_url)
     query = parse_qs(parsed.query)
     
     # Handle sslmode
     if "sslmode" in query:
         sslmode = query.pop("sslmode")[0]
-        # asyncpg uses 'ssl' instead of 'sslmode'
+        # For asyncpg, we pass ssl via connect_args
         if sslmode in ["require", "prefer", "allow"]:
-            query["ssl"] = ["true"]
+            connect_args["ssl"] = True
         elif sslmode == "disable":
-            query["ssl"] = ["false"]
+            connect_args["ssl"] = False
             
     # Remove other unsupported parameters like 'channel_binding'
     unsupported_params = ["channel_binding"]
@@ -34,11 +35,15 @@ if db_url.startswith("postgresql://"):
         if param in query:
             query.pop(param)
             
-    # Reconstruct URL without unsupported parameters
-    new_query = urlencode(query, doseq=True)
-    db_url = urlunparse(parsed._replace(query=new_query))
+    # Reconstruct URL without query parameters that asyncpg might reject
+    db_url = urlunparse(parsed._replace(query=""))
 
-engine = create_async_engine(db_url, echo=False, future=True)
+engine = create_async_engine(
+    db_url, 
+    echo=False, 
+    future=True,
+    connect_args=connect_args
+)
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 Base = declarative_base()
