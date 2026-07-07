@@ -4,7 +4,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy import Column, String, DateTime, Text, Integer, Boolean, ForeignKey, JSON
 from datetime import datetime
 from app.core.config import get_settings
-from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
+from urllib.parse import urlparse, urlunparse, parse_qs
 
 settings = get_settings()
 
@@ -12,9 +12,10 @@ settings = get_settings()
 db_url = settings.DATABASE_URL
 connect_args = {}
 
-if db_url.startswith("postgresql://"):
-    # Replace scheme
-    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+if db_url.startswith("postgresql://") or db_url.startswith("postgresql+asyncpg://"):
+    # Ensure scheme is postgresql+asyncpg
+    if db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
     
     # Parse URL to handle query parameters
     parsed = urlparse(db_url)
@@ -22,20 +23,14 @@ if db_url.startswith("postgresql://"):
     
     # Handle sslmode
     if "sslmode" in query:
-        sslmode = query.pop("sslmode")[0]
+        sslmode = query.get("sslmode")[0]
         # For asyncpg, we pass ssl via connect_args
         if sslmode in ["require", "prefer", "allow"]:
             connect_args["ssl"] = True
         elif sslmode == "disable":
             connect_args["ssl"] = False
             
-    # Remove other unsupported parameters like 'channel_binding'
-    unsupported_params = ["channel_binding"]
-    for param in unsupported_params:
-        if param in query:
-            query.pop(param)
-            
-    # Reconstruct URL without query parameters that asyncpg might reject
+    # Reconstruct URL without ANY query parameters as asyncpg is strict
     db_url = urlunparse(parsed._replace(query=""))
 
 engine = create_async_engine(

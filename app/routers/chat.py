@@ -14,12 +14,14 @@ from app.services.ai_service import AIService
 router = APIRouter(prefix="/api/chat", tags=["Chat"])
 
 class ChatMessageRequest(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
     session_id: Optional[str] = None
     message: str
     model: Optional[str] = None
     stream: bool = False
 
 class ChatSessionResponse(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
     id: str
     title: str
     model: str
